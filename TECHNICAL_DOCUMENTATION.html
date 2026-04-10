@@ -1,0 +1,1516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OPRO Cronjob Monitor — Technical Documentation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" />
+  <style>
+    :root {
+      --orange:        #E87722;
+      --orange-light:  #FEF3E8;
+      --orange-dark:   #B85810;
+      --orange-border: #F0BC8A;
+      --sidebar-bg:    #1a1c2e;
+      --sidebar-text:  #c9d1e0;
+      --sidebar-muted: #7c8496;
+      --content-bg:    #ffffff;
+      --page-bg:       #f4f5f7;
+      --text:          #1a1a2e;
+      --text-muted:    #555e6b;
+      --border:        #e2e5ea;
+      --success:       #2E7D32;
+      --error:         #C62828;
+      --sidebar-w:     272px;
+      --topbar-h:      56px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--page-bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* ── TOP BAR ────────────────────────────────────── */
+    #topbar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+      height: var(--topbar-h);
+      background: var(--orange);
+      display: flex; align-items: center; gap: 12px;
+      padding: 0 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+    }
+    #topbar .logo-mark {
+      display: flex; align-items: center; gap: 8px;
+      background: rgba(255,255,255,0.13); border-radius: 6px;
+      padding: 4px 10px;
+    }
+    #topbar .logo-mark svg { flex-shrink: 0; }
+    #topbar .logo-text { line-height: 1.1; }
+    #topbar .logo-text .brand { font-size: 11px; font-weight: 800; letter-spacing: 2px; color: #fff; }
+    #topbar .logo-text .sub   { font-size: 8px;  font-weight: 400; letter-spacing: 1.8px; color: rgba(255,255,255,.75); }
+    #topbar .divider { width: 1px; height: 28px; background: rgba(255,255,255,.25); margin: 0 8px; }
+    #topbar .app-title { color: #fff; font-size: 15px; font-weight: 600; letter-spacing: .3px; flex: 1; }
+    #topbar .badge {
+      background: rgba(255,255,255,0.18); color: #fff;
+      font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 12px;
+    }
+
+    /* ── SIDEBAR ────────────────────────────────────── */
+    #sidebar {
+      position: fixed; top: var(--topbar-h); left: 0;
+      width: var(--sidebar-w); height: calc(100vh - var(--topbar-h));
+      background: var(--sidebar-bg); overflow-y: auto; z-index: 100;
+      padding: 20px 0 40px;
+      border-right: 1px solid rgba(255,255,255,0.06);
+    }
+    #sidebar::-webkit-scrollbar { width: 4px; }
+    #sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
+
+    .toc-label {
+      font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+      color: var(--orange); padding: 0 20px 10px; display: block;
+    }
+    .toc-item { display: block; padding: 5px 20px; text-decoration: none; font-size: 12.5px;
+      color: var(--sidebar-text); border-left: 3px solid transparent; transition: all .15s; line-height: 1.4; }
+    .toc-item:hover { background: rgba(232,119,34,.1); color: #fff; border-left-color: var(--orange); }
+    .toc-item.active { background: rgba(232,119,34,.15); color: var(--orange); border-left-color: var(--orange); font-weight: 600; }
+    .toc-item.h3 { padding-left: 34px; font-size: 11.5px; color: var(--sidebar-muted); }
+    .toc-item.h4 { padding-left: 48px; font-size: 11px; color: var(--sidebar-muted); }
+    .toc-section-sep { height: 1px; background: rgba(255,255,255,.06); margin: 6px 20px; }
+
+    /* ── MAIN CONTENT ───────────────────────────────── */
+    #main {
+      margin-left: var(--sidebar-w);
+      margin-top: var(--topbar-h);
+      padding: 40px 48px 80px;
+      max-width: calc(var(--sidebar-w) + 860px);
+      min-height: calc(100vh - var(--topbar-h));
+    }
+
+    /* ── TYPOGRAPHY ─────────────────────────────────── */
+    #content h1 { font-size: 32px; font-weight: 700; color: var(--orange-dark); margin: 48px 0 16px;
+      padding-bottom: 10px; border-bottom: 3px solid var(--orange); }
+    #content h1:first-child { margin-top: 0; }
+    #content h2 { font-size: 22px; font-weight: 700; color: var(--text); margin: 40px 0 14px;
+      padding: 10px 16px; background: var(--orange-light); border-left: 4px solid var(--orange); border-radius: 0 6px 6px 0; }
+    #content h3 { font-size: 17px; font-weight: 600; color: var(--orange-dark); margin: 32px 0 10px; }
+    #content h4 { font-size: 14px; font-weight: 600; color: var(--text-muted); margin: 24px 0 8px;
+      text-transform: uppercase; letter-spacing: .6px; }
+    #content p  { font-size: 14.5px; line-height: 1.75; color: var(--text); margin-bottom: 14px; }
+    #content ul, #content ol { padding-left: 24px; margin-bottom: 14px; }
+    #content li { font-size: 14px; line-height: 1.7; color: var(--text); margin-bottom: 4px; }
+    #content strong { font-weight: 600; color: var(--text); }
+    #content em    { color: var(--orange-dark); font-style: italic; }
+    #content a     { color: var(--orange); text-decoration: none; }
+    #content a:hover { text-decoration: underline; }
+    #content hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+    /* ── INLINE CODE ────────────────────────────────── */
+    #content code:not(pre code) {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12.5px; background: var(--orange-light);
+      color: var(--orange-dark); padding: 1px 6px; border-radius: 4px;
+      border: 1px solid var(--orange-border);
+    }
+
+    /* ── CODE BLOCKS ────────────────────────────────── */
+    #content pre {
+      background: #1a1b2e; border-radius: 10px; margin: 16px 0 20px;
+      overflow: auto; border: 1px solid #2d2f45;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    }
+    #content pre code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12.5px; line-height: 1.65; padding: 20px 22px;
+      display: block; background: transparent; color: #abb2bf;
+      border: none;
+    }
+
+    /* ── TABLES ─────────────────────────────────────── */
+    #content table {
+      width: 100%; border-collapse: collapse; margin: 16px 0 24px;
+      font-size: 13.5px; border-radius: 8px; overflow: hidden;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    #content th {
+      background: var(--orange); color: #fff; font-weight: 600;
+      padding: 10px 14px; text-align: left; font-size: 12px;
+      text-transform: uppercase; letter-spacing: .5px;
+    }
+    #content td { padding: 9px 14px; border-bottom: 1px solid var(--border); vertical-align: top; line-height: 1.6; }
+    #content tr:nth-child(even) td { background: var(--orange-light); }
+    #content tr:last-child td { border-bottom: none; }
+
+    /* ── BLOCKQUOTE ─────────────────────────────────── */
+    #content blockquote {
+      border-left: 4px solid var(--orange); background: var(--orange-light);
+      padding: 12px 18px; margin: 16px 0; border-radius: 0 8px 8px 0;
+    }
+    #content blockquote p { margin: 0; color: var(--orange-dark); font-style: italic; }
+
+    /* ── SCROLL PROGRESS BAR ────────────────────────── */
+    #progress { position: fixed; top: var(--topbar-h); left: var(--sidebar-w); right: 0; height: 3px; z-index: 150;
+      background: transparent; }
+    #progress-bar { height: 100%; width: 0%; background: var(--orange); transition: width .1s linear; }
+
+    /* ── BACK TO TOP ────────────────────────────────── */
+    #back-top {
+      position: fixed; bottom: 28px; right: 28px; z-index: 200;
+      width: 40px; height: 40px; border-radius: 50%; background: var(--orange); color: #fff;
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+      box-shadow: 0 3px 10px rgba(232,119,34,.4); opacity: 0; transition: opacity .3s;
+      border: none; font-size: 18px;
+    }
+    #back-top.visible { opacity: 1; }
+
+    /* ── RESPONSIVE ─────────────────────────────────── */
+    @media (max-width: 900px) {
+      #sidebar { display: none; }
+      #main { margin-left: 0; padding: 24px 20px 60px; }
+      #progress { left: 0; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <div class="logo-mark">
+    <svg width="22" height="26" viewBox="0 0 26 30" fill="none" aria-hidden="true">
+      <path d="M13 1 L1 29 H6.5 L13 11 L19.5 29 H25 Z" fill="white"/>
+      <rect x="7.5" y="20" width="11" height="2.5" rx="1" fill="white"/>
+    </svg>
+    <div class="logo-text">
+      <div class="brand">ASHLEY</div>
+      <div class="sub">FURNITURE</div>
+    </div>
+  </div>
+  <div class="divider"></div>
+  <div class="app-title">OPRO Cronjob Monitor — Technical Documentation</div>
+  <div class="badge">v1.0</div>
+</div>
+
+<!-- SCROLL PROGRESS -->
+<div id="progress"><div id="progress-bar"></div></div>
+
+<!-- SIDEBAR -->
+<nav id="sidebar" aria-label="Table of contents">
+  <span class="toc-label">Contents</span>
+  <div id="toc-links"></div>
+</nav>
+
+<!-- MAIN CONTENT -->
+<main id="main">
+  <div id="content"></div>
+</main>
+
+<!-- BACK TO TOP -->
+<button id="back-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="Back to top">↑</button>
+
+<!-- MARKDOWN SOURCE — browser treats textarea content as literal text, no HTML escaping needed -->
+<textarea id="md-src" style="display:none">
+# OPRO Cronjob Monitor — Complete Technical Documentation
+
+> **Ashley Furniture Industries** | React + TypeScript SPA
+> Last updated: April 2026
+
+## 1. Application Overview
+
+The **OPRO Cronjob Monitor** is a single-page React application (SPA) built for Ashley Furniture Industries to monitor the execution of OPRO batch cronjobs. Each batch job runs a six-step pipeline that processes furniture orders, allocates inventory, and generates CODIS suggestions.
+
+### What the app does
+
+| Screen | Route | Purpose |
+|--------|-------|---------|
+| Batch List | `/` | View all batch executions in a paginated, filterable table |
+| Batch Details | `/batch/:batchId` | Drill into a single batch — see metrics, step timings, errors |
+
+### High-level data flow
+
+```
+User opens browser
+    → React Router loads the correct Page component
+        → Page calls a custom hook (useBatches / useBatchDetails)
+            → Hook calls React Query → fetchBatches / fetchBatchById (batchApi.ts)
+                → batchApi applies filters to MOCK_BATCHES and returns paginated data
+                    → Hook returns { data, isLoading, isError }
+                        → Page passes data down to display components
+                            → User sees the rendered table or detail view
+```
+
+### Technology stack
+
+| Tool | Version | Role |
+|------|---------|------|
+| React 18 | 18.3+ | UI rendering with concurrent features |
+| TypeScript 5 | 5.x | Full static type safety |
+| Vite 5 | 5.x | Dev server and optimised production builds |
+| Material UI v7 | 7.3+ | Component library, Ashley brand theme |
+| React Router v7 | 7.x | Client-side routing, URL-persisted filters |
+| TanStack React Query v5 | 5.x | Server state, caching, loading/error states |
+| date-fns v3 | 3.x | Date formatting and parsing |
+| Axios v1 | 1.x | HTTP client (wired, mock data currently used) |
+
+---
+
+## 2. Project Structure
+
+```
+opro-cronjob-monitor/
+├── index.html                        # HTML shell, Roboto font, meta tags
+├── vite.config.ts                    # Vite config with path aliases
+├── tsconfig.app.json                 # TypeScript config with path aliases
+├── .env.example                      # Environment variable template
+└── src/
+    ├── main.tsx                      # DOM mount point
+    ├── App.tsx                       # Providers + router
+    ├── index.css                     # Global CSS reset
+    │
+    ├── types/
+    │   └── batch.ts                  # All interfaces, enums, constants
+    │
+    ├── theme/
+    │   └── ashleyTheme.ts            # MUI theme + custom color tokens
+    │
+    ├── services/
+    │   ├── mockData.ts               # Seeded random data generator (20 batches)
+    │   ├── batchApi.ts               # API layer (filter/paginate over mock data)
+    │   └── exportService.ts          # PDF/CSV/email stubs
+    │
+    ├── hooks/
+    │   ├── useBatches.ts             # React Query hook for batch list
+    │   ├── useBatchDetails.ts        # React Query hook for single batch
+    │   └── useWebSocket.ts           # Live-mode WebSocket skeleton
+    │
+    ├── utils/
+    │   ├── dateUtils.ts              # Date formatting + time-frame filtering
+    │   └── formatters.ts             # Number, percentage, progress bar utils
+    │
+    ├── contexts/
+    │   └── FilterContext.tsx         # Global filter state + updaters
+    │
+    ├── pages/
+    │   ├── BatchListPage.tsx         # Screen 1 — list + filters
+    │   └── BatchDetailsPage.tsx      # Screen 2 — single batch analytics
+    │
+    └── components/
+        ├── layout/
+        │   ├── Header.tsx            # Sticky top bar with Ashley logo
+        │   └── Layout.tsx            # Page wrapper (header + footer + main)
+        ├── shared/
+        │   ├── LoadingSpinner.tsx    # Centered spinner with message
+        │   ├── ErrorBoundary.tsx     # Class component catching render errors
+        │   └── EmptyState.tsx        # Zero-results placeholder
+        ├── BatchList/
+        │   ├── FilterPanel.tsx       # 4-field filter bar
+        │   ├── CustomTimePicker.tsx  # HH:MM pickers for custom time range
+        │   ├── BatchTable.tsx        # MUI Table with pagination + skeletons
+        │   └── BatchRow.tsx          # Single memoised table row
+        └── BatchDetails/
+            ├── BatchHeader.tsx       # Large batch ID + status chip + metadata
+            ├── MetricCards.tsx       # 3 KPI cards (orders/allocated/suggestions)
+            ├── ExecutionTimeline.tsx # 6-step breakdown container
+            └── StepDetail.tsx        # Single step row with progress bar + expand
+```
+
+---
+
+## 3. Bootstrap Layer
+
+### `src/main.tsx` — DOM Mount Point
+
+```typescript
+const rootElement = document.getElementById('root');
+if (!rootElement) throw new Error('Root element not found.');
+createRoot(rootElement).render(
+  <StrictMode><App /></StrictMode>
+);
+```
+
+**What happens here:**
+`createRoot` (React 18 concurrent API) mounts the app onto `<div id="root">` in `index.html`. `StrictMode` wraps the whole tree, causing every component to render **twice in development** — this deliberately surfaces side-effects and deprecated API usage early. It has zero impact in production builds.
+
+---
+
+### `src/App.tsx` — Provider Tree & Router
+
+```typescript
+const App: React.FC = () => (
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider theme={ashleyTheme}>
+        <CssBaseline />
+        <FilterProvider>
+          <BrowserRouter>
+            <Suspense fallback={<LoadingSpinner fullHeight message="Loading page…" />}>
+              <Routes>
+                <Route path="/"              element={<BatchListPage />} />
+                <Route path="/batch/:batchId" element={<BatchDetailsPage />} />
+              </Routes>
+            </Suspense>
+          </BrowserRouter>
+        </FilterProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
+);
+```
+
+**Provider order — outer to inner (intentional):**
+
+| Layer | Provider | Why this position |
+|-------|----------|-------------------|
+| 1 | `ErrorBoundary` | Must be outermost — catches errors thrown by any child including other providers |
+| 2 | `QueryClientProvider` | React Query wraps all data-fetching hooks; sits outside theme |
+| 3 | `ThemeProvider` + `CssBaseline` | MUI styling cascades down; CssBaseline injects CSS reset |
+| 4 | `FilterProvider` | Custom context; must be inside Router to access URL params if needed |
+| 5 | `BrowserRouter` | Wraps all Route declarations and navigation hooks |
+| 6 | `Suspense` | Catches the lazy-load promise; shows LoadingSpinner while page chunk downloads |
+
+**Pages are lazy-loaded:**
+
+```typescript
+const BatchListPage    = lazy(() => import('./pages/BatchListPage'));
+const BatchDetailsPage = lazy(() => import('./pages/BatchDetailsPage'));
+```
+
+This splits the bundle into separate JS chunks. On first visit to `/`, the `BatchDetailsPage` chunk is **never downloaded** — faster initial load. The `Suspense` boundary shows a spinner during the brief download period.
+
+**QueryClient configuration:**
+
+```typescript
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { refetchOnWindowFocus: false, retry: 2 } },
+});
+```
+
+- `refetchOnWindowFocus: false` — prevents surprising refetches when the user alt-tabs
+- `retry: 2` — on failure, React Query retries the fetch twice before showing an error state
+
+---
+
+## 4. Data Layer
+
+### 4.1 TypeScript Types — `src/types/batch.ts`
+
+This is the **single source of truth** for every data shape. Nothing is typed inline in components.
+
+#### `BatchStepResult` — one pipeline step
+
+```typescript
+export interface BatchStepResult {
+  step_name: string;         // e.g. "EDW Fetch"
+  started_at: Date;          // Step start timestamp
+  completed_at: Date;        // Step end timestamp
+  duration_seconds: number;  // Pre-computed (completed - started)
+  records_processed: number; // How many records this step touched
+  success: boolean;          // Did this step complete without error?
+  error_message?: string;    // Populated only on failure
+}
+```
+
+#### `BatchResult` — a full batch execution
+
+```typescript
+export interface BatchResult {
+  batch_id: string;               // Format: "BATCH-YYYYMMDD-HHMM"
+  started_at: Date;
+  completed_at: Date;
+  success: boolean;               // true only if ALL 6 steps succeeded
+  total_orders: number;           // Random 800–1200
+  orders_allocated: number;       // 85–95% of total_orders
+  suggestions_generated: number;  // 40–50% of total_orders
+  total_duration_seconds: number; // Sum of all step durations
+  // The 6 pipeline steps as typed fields (not a generic array):
+  edw_fetch: BatchStepResult;
+  pass1_allocation: BatchStepResult;
+  consolidation: BatchStepResult;
+  pass2_allocation: BatchStepResult;
+  edd_comparison: BatchStepResult;
+  codis_suggestions: BatchStepResult;
+}
+```
+
+> **Why individual step fields instead of `steps: BatchStepResult[]`?**
+> TypeScript can enforce that all 6 steps are always present. An array would allow 0–N steps and require runtime length checks everywhere. With named fields, a missing step is a compile error.
+
+#### `FilterState` — everything the user can filter by
+
+```typescript
+export interface FilterState {
+  jobId: string;                                         // Partial batch ID search
+  date: string | null;                                   // "YYYY-MM-DD" ISO date
+  timeFrame: 'all' | 'morning' | 'afternoon' | 'custom';
+  customTimeStart: string;                               // "HH:mm" when custom
+  customTimeEnd: string;                                 // "HH:mm" when custom
+  status: 'all' | 'success' | 'failed';
+}
+```
+
+#### Constants exported from this file
+
+```typescript
+export const DEFAULT_FILTER_STATE: FilterState   // All filters reset to defaults
+export const TIME_FRAME_OPTIONS                  // Used by the Select dropdown
+export const STEP_KEYS                           // ['edw_fetch', 'pass1_allocation', ...]
+export const STEP_LABELS                         // { edw_fetch: 'EDW Fetch', ... }
+export const STEP_NUMBERS                        // ['①','②','③','④','⑤','⑥']
+```
+
+`STEP_KEYS` is typed as `(keyof Pick<BatchResult, ...>)[]` — iterating it in `ExecutionTimeline` and doing `batch[key]` is **fully type-safe**. TypeScript will error at compile time if a key is wrong.
+
+---
+
+### 4.2 Mock Data — `src/services/mockData.ts`
+
+#### Deterministic seeded random number generator
+
+```typescript
+const seededRand = (seed: number): (() => number) => {
+  let s = seed;
+  return () => {
+    s = (s * 9301 + 49297) % 233280;
+    return s / 233280;  // Always returns a float in [0, 1)
+  };
+};
+const rand = seededRand(20260401); // Seed = April 1, 2026
+```
+
+**Why seeded?** Every time the app loads, `generateMockBatches()` produces the **exact same 20 batches**. Without seeding, data would randomise on every page refresh, breaking filter expectations and making debugging unpredictable.
+
+#### Building a single step with time chaining
+
+```typescript
+const buildStep = (stepName, startTime, minDuration, maxDuration, recordsProcessed, forceFailure) => {
+  const duration  = randInt(minDuration, maxDuration);
+  const completed = new Date(startTime.getTime() + duration * 1000);
+  return { step_name: stepName, started_at: startTime, completed_at: completed, ... };
+};
+
+// Pipeline construction — currentTime cursor advances with each step
+let currentTime = new Date(batchStart);
+const edwFetch  = buildStep('EDW Fetch', currentTime, 30, 60, totalOrders, ...);
+currentTime     = new Date(currentTime.getTime() + edwFetch.duration_seconds * 1000);
+const pass1     = buildStep('Pass 1 Allocation', currentTime, 90, 150, ...);
+// ... and so on for all 6 steps
+```
+
+The `currentTime` cursor advances by each step's duration, ensuring steps **never overlap** — they are always sequential, matching real-world pipeline behavior.
+
+#### Generating 20 batches
+
+```typescript
+const baseDate = new Date(2026, 3, 1, 0, 0, 0); // April 1, 2026 00:00
+for (let i = 0; i < 20; i++) {
+  const batchStart = new Date(baseDate.getTime() + i * 2 * 60 * 60 * 1000); // +2h each
+  const isFailed   = rand() < 0.1; // 10% failure probability
+  batches.push(generateBatch(batchStart, isFailed));
+}
+return batches.sort((a, b) => b.started_at.getTime() - a.started_at.getTime()); // newest first
+```
+
+Batches span April 1 00:00 through April 2 14:00 (20 × 2h = 40 hours). The final sort puts newest first, matching expected table display order.
+
+#### Exported data structures
+
+| Export | Type | Purpose |
+|--------|------|---------|
+| `MOCK_BATCHES` | `BatchResult[]` | Sorted array (newest first) |
+| `MOCK_BATCH_MAP` | `Record<string, BatchResult>` | O(1) lookup by `batch_id` |
+| `BATCH_ID_SUGGESTIONS` | `string[]` | For FilterPanel Job ID autocomplete |
+
+---
+
+### 4.3 API Service — `src/services/batchApi.ts`
+
+This is the **only layer** that touches data. Components and hooks never import `mockData.ts` directly — enabling a clean swap to a real API later.
+
+#### Simulated network delay
+
+```typescript
+const SIMULATED_DELAY_MS = 600;
+const delay = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));
+```
+
+This 600ms delay makes loading skeletons visible during development, ensuring UI loading states are always exercised.
+
+#### `fetchBatches` — the 4-stage filter + paginate pipeline
+
+```typescript
+export const fetchBatches = async (params): Promise<FetchBatchesResult> => {
+  await delay(SIMULATED_DELAY_MS);
+  let results = [...MOCK_BATCHES]; // Copy — never mutate source array
+
+  // Stage 1: Filter by Job ID (case-insensitive partial match)
+  if (filters.jobId.trim()) {
+    const query = filters.jobId.trim().toUpperCase();
+    results = results.filter((b) => b.batch_id.toUpperCase().includes(query));
+  }
+
+  // Stage 2: Filter by date (year/month/day comparison)
+  if (filters.date) {
+    const filterDate = parseDateString(filters.date);
+    results = results.filter((b) =>
+      b.started_at.getFullYear() === filterDate.getFullYear() &&
+      b.started_at.getMonth()    === filterDate.getMonth()    &&
+      b.started_at.getDate()     === filterDate.getDate()
+    );
+  }
+
+  // Stage 3: Filter by time frame (uses isWithinTimeFrame from dateUtils.ts)
+  if (filters.timeFrame !== 'all') {
+    results = results.filter((b) =>
+      isWithinTimeFrame(b.started_at, filters.timeFrame, {
+        start: filters.customTimeStart, end: filters.customTimeEnd,
+      })
+    );
+  }
+
+  // Stage 4: Filter by status
+  if (filters.status === 'success') results = results.filter((b) => b.success === true);
+  else if (filters.status === 'failed') results = results.filter((b) => b.success === false);
+
+  // Paginate AFTER filtering — total reflects post-filter count
+  const total      = results.length;
+  const startIndex = (page - 1) * pageSize;
+  return { data: results.slice(startIndex, startIndex + pageSize), total, page, pageSize };
+};
+```
+
+Each filter narrows `results` further. Pagination is applied **last** so `total` always reflects what was found, not a pre-filter count.
+
+#### `fetchBatchById` — single batch lookup
+
+```typescript
+export const fetchBatchById = async (batchId: string): Promise<BatchResult | null> => {
+  await delay(SIMULATED_DELAY_MS);
+  return MOCK_BATCH_MAP[batchId] ?? null;
+};
+```
+
+Returns `null` if the ID doesn't exist. The hook (`useBatchDetails`) maps this to `notFound: true`, and the page renders `EmptyState` instead of crashing.
+
+---
+
+### 4.4 Export Service — `src/services/exportService.ts`
+
+Four async stub functions: `exportBatchPdf`, `exportBatchesCsv`, `exportBatchesExcel`, `emailBatchReport`. Each resolves immediately with a log message. When the real backend is available, **only this file changes** — every call site in `BatchDetailsPage` remains untouched.
+
+---
+
+## 5. State & Logic Layer
+
+### 5.1 Theme — `src/theme/ashleyTheme.ts`
+
+The MUI theme is created with `createTheme()` and passed to `ThemeProvider` in `App.tsx`. Every MUI component throughout the app automatically inherits these values — no need to pass colors as props.
+
+#### Color palette
+
+```typescript
+palette: {
+  primary: {
+    main:  '#E87722',  // Ashley brand orange — header, buttons, chips, focus rings
+    light: '#F09A55',  // Hover states, lighter accents
+    dark:  '#B85810',  // Header avatar background, active states
+  },
+  secondary: { main: '#78909C' }, // Mild blue-gray — secondary buttons
+  success:   { main: '#2E7D32' }, // Success status badges
+  error:     { main: '#C62828' }, // Failed status badges
+}
+```
+
+#### Global table header override
+
+```typescript
+MuiTableHead: {
+  styleOverrides: {
+    root: {
+      '& .MuiTableCell-head': {
+        backgroundColor: '#FEF3E8',         // Soft orange tint
+        color: '#5D3A1A',                   // Dark warm text for contrast
+        borderBottom: '2px solid #F0BC8A',  // Accent separator line
+      },
+    },
+  },
+},
+```
+
+This is a **global component override** — applies to every `TableHead` in the app without any className or sx prop on the component itself. One change here updates every table.
+
+#### Custom color tokens (`ashleyColors`)
+
+```typescript
+export const ashleyColors = {
+  metrics: {
+    primary:   '#E87722', // Total Orders card — orange
+    secondary: '#2C5F2D', // Allocated Orders card — forest green (semantic)
+    accent:    '#B85810', // Suggestions card — deep orange
+  },
+  brand: { orange: '#E87722', orangeLight: '#FEF3E8', ... }
+}
+```
+
+These are used in `MetricCards.tsx` for per-card accent colors — outside the MUI palette because they're cosmetic per-card colors, not semantic UI states.
+
+---
+
+### 5.2 Filter Context — `src/contexts/FilterContext.tsx`
+
+Filter state is **global** — `FilterPanel` writes it, `BatchListPage` reads it. Without a context, the state would need to live in a common ancestor and be prop-drilled through multiple layers.
+
+#### Context value shape
+
+```typescript
+interface FilterContextValue {
+  filters: FilterState;
+  setFilters: (filters: FilterState) => void;              // Replace entire filter object
+  updateFilter: (key, value) => void;                      // Update one field
+  resetFilters: () => void;                                // Back to DEFAULT_FILTER_STATE
+  hasActiveFilters: boolean;                               // Any non-default filter active?
+  isLive: boolean;                                         // Future: WebSocket toggle
+  setIsLive: (live: boolean) => void;
+}
+```
+
+#### `hasActiveFilters` computed value
+
+```typescript
+const hasActiveFilters = useMemo(
+  () =>
+    filters.jobId     !== DEFAULT_FILTER_STATE.jobId     ||
+    filters.date      !== DEFAULT_FILTER_STATE.date      ||
+    filters.timeFrame !== DEFAULT_FILTER_STATE.timeFrame ||
+    filters.status    !== DEFAULT_FILTER_STATE.status,
+  [filters],
+);
+```
+
+Drives the "active filters" badge without any imperative tracking. Adding a new filter field means adding one more `||` condition here.
+
+#### How the context is consumed
+
+- **`FilterPanel`** — calls `setFilters()` on Apply, `resetFilters()` on Clear
+- **`BatchListPage`** — reads `filters` and passes to `useBatches()`
+- **`useFilterContext()`** hook — throws a descriptive error if called outside `FilterProvider`
+
+---
+
+### 5.3 Custom Hooks
+
+#### `useBatches` — `src/hooks/useBatches.ts`
+
+```typescript
+export const useBatches = ({ filters, page, pageSize = 10 }) => {
+  const queryResult = useQuery({
+    queryKey:  ['batches', filters, page, pageSize],  // Changes trigger re-fetch
+    queryFn:   () => fetchBatches({ filters, page, pageSize }),
+    staleTime: 30_000, // 30 seconds before considered stale
+    retry: 2,
+  });
+  return {
+    batches:    queryResult.data?.data ?? [],
+    total:      queryResult.data?.total ?? 0,
+    isLoading, isFetching, isError, error, refetch,
+  };
+};
+```
+
+`queryKey` is `['batches', filters, page, pageSize]`. React Query compares this key **deeply** on every render. When any filter or page changes, the key changes and React Query automatically re-runs `queryFn`. The caller never writes `useEffect` to trigger refetches.
+
+`staleTime: 30_000` — the cached result stays fresh for 30 seconds. If the user changes filters and changes back, the original result is served from cache instantly (no spinner) for up to 30 seconds.
+
+#### `useBatchDetails` — `src/hooks/useBatchDetails.ts`
+
+```typescript
+export const useBatchDetails = (batchId: string | undefined) => {
+  const queryResult = useQuery({
+    queryKey:  ['batch', batchId],
+    queryFn:   () => batchId ? fetchBatchById(batchId) : Promise.resolve(null),
+    enabled:   !!batchId,    // Query only fires when batchId is defined
+    staleTime: 60_000,       // 1 minute — detail pages change less often
+  });
+  return {
+    batch:    queryResult.data ?? null,
+    notFound: queryResult.isSuccess && queryResult.data === null,
+    ...
+  };
+};
+```
+
+`enabled: !!batchId` prevents the query from firing with `undefined` as the key. `notFound` is derived: `isSuccess` means fetch completed without error, but `data === null` means `fetchBatchById` returned null (ID not in map) — renders `EmptyState`.
+
+#### `useWebSocket` — `src/hooks/useWebSocket.ts`
+
+Skeleton hook for future live-mode real-time updates. Currently a no-op. When implemented, it will establish a WebSocket connection and push new batch data into the React Query cache via `queryClient.setQueryData()`. The `enabled` prop is `false` by default.
+
+---
+
+### 5.4 Utility Functions
+
+#### `src/utils/dateUtils.ts`
+
+| Function | Signature | What it does |
+|----------|-----------|--------------|
+| `formatDisplayDate` | `(date: Date) → string` | "Apr 01, 2026" |
+| `formatDisplayTime` | `(date: Date) → string` | "14:00:00" (24h) |
+| `formatDuration` | `(seconds: number) → string` | 125 → "2m 05s" |
+| `parseDateString` | `(str: string) → Date` | Parses "YYYY-MM-DD" |
+| `isWithinTimeFrame` | `(date, timeFrame, custom) → boolean` | Core filter logic |
+| `isValidBatchIdFormat` | `(id: string) → boolean` | Validates "BATCH-YYYYMMDD-HHMM" |
+
+**`isWithinTimeFrame` — the custom time filter engine:**
+
+```typescript
+export const isWithinTimeFrame = (date, timeFrame, custom): boolean => {
+  const totalMinutes = date.getHours() * 60 + date.getMinutes();
+  switch (timeFrame) {
+    case 'morning':   return totalMinutes >= 0   && totalMinutes < 720;   // 00:00–12:00
+    case 'afternoon': return totalMinutes >= 720  && totalMinutes <= 1439; // 12:00–23:59
+    case 'custom': {
+      const parseHHMM = (hhmm) => {
+        const [h, m] = hhmm.split(':').map(Number);
+        return isNaN(h) || isNaN(m) ? -1 : h * 60 + m;
+      };
+      const startMin = parseHHMM(custom.start); // "12:00" → 720
+      const endMin   = parseHHMM(custom.end);   // "16:00" → 960
+      if (startMin < 0 || endMin < 0) return true; // Incomplete range — show all
+      return totalMinutes >= startMin && totalMinutes <= endMin;
+    }
+    default: return true;
+  }
+};
+```
+
+Everything converts to **minutes since midnight** for simple numeric comparisons. "12:00–16:00" becomes 720–960 minutes.
+
+#### `src/utils/formatters.ts`
+
+| Function | What it does |
+|----------|--------------|
+| `formatNumber` | Locale-aware thousands separator: 1200 → "1,200" |
+| `formatPercent` | Ratio to percent string: 0.852 → "85.2%" |
+| `stepPercentage` | `(stepDuration / totalDuration) * 100` rounded |
+| `progressBarColor` | ≥35% = red, ≥20% = orange, else green |
+| `allocationRate` | `(allocated / total)` as formatted percent string |
+
+---
+
+## 6. Shared Infrastructure Components
+
+### `src/components/shared/ErrorBoundary.tsx`
+
+A **class component** — React functional components cannot be error boundaries (React architectural constraint). Implements two lifecycle methods:
+
+- `getDerivedStateFromError(error)` — static method, updates state to `{ hasError: true }` before re-render, causing the fallback UI to render
+- `componentDidCatch(error, info)` — called after error UI renders; the TODO here is to send to Sentry
+
+The "Try Again" button calls `handleReset` which clears error state and re-renders children. This is the **only class component** in the codebase — everything else is functional.
+
+### `src/components/shared/LoadingSpinner.tsx`
+
+Centered MUI `CircularProgress`. Props: `message` (default: "Loading…"), `size` (default: 48px), `fullHeight`. Used in two places: inside `Suspense` in `App.tsx` during page chunk download, and inside pages when `isLoading` is true.
+
+### `src/components/shared/EmptyState.tsx`
+
+Shown when filtered results are empty. Has `role="status"` and `aria-live="polite"` — screen readers announce the empty state automatically. The optional "Clear Filters" action calls `resetFilters()` in FilterPanel.
+
+### `src/components/layout/Header.tsx`
+
+**Skip-to-content link** — visually hidden but focusable, jumps to `#main-content`. Required for keyboard accessibility (WCAG 2.1 AA).
+
+**Ashley logo mark** — inline SVG geometric "A" shape:
+
+```typescript
+<svg width="26" height="30" viewBox="0 0 26 30">
+  <path d="M13 1 L1 29 H6.5 L13 11 L19.5 29 H25 Z" fill="white" />  // A legs
+  <rect x="7.5" y="20" width="11" height="2.5" rx="1" fill="white" /> // A crossbar
+</svg>
+```
+
+`M13 1` starts at top-center. `L1 29` draws the left leg. `L19.5 29 H25 Z` completes the right leg. The `rect` is the crossbar of the A.
+
+### `src/components/layout/Layout.tsx`
+
+Renders: `Header` → `<main id="main-content">` → `<footer>`. The `id="main-content"` is the skip-to-content target. `tabIndex={-1}` on `<main>` allows programmatic focus shift.
+
+---
+
+## 7. Screen 1 — Batch List
+
+### Data flow
+
+```
+URL params (page, pageSize, jobId, date, timeFrame, status)
+    ↓ read once on mount (useEffect with [])
+FilterContext.filters
+    ↓ passed to
+useBatches({ filters, page, pageSize })
+    ↓ queryKey changes → queryFn fires automatically
+fetchBatches(params) in batchApi.ts
+    ↓ 4-stage filter + paginate over MOCK_BATCHES
+{ data: BatchResult[], total: number }
+    ↓ returned to
+BatchListPage
+    ↓ passes props to
+BatchTable → renders BatchRow × N
+```
+
+---
+
+### `src/pages/BatchListPage.tsx` — Screen 1 orchestrator
+
+Owns pagination state (`page`, `pageSize`), URL sync, and connects FilterContext to useBatches to BatchTable.
+
+#### Two-way URL synchronisation
+
+```typescript
+// Mount only: URL → Context (restores state on page refresh)
+useEffect(() => {
+  const jobId   = searchParams.get('jobId') ?? '';
+  const status  = searchParams.get('status') ?? 'all';
+  setFilters({ jobId, date, timeFrame, customTimeStart: '', customTimeEnd: '', status });
+}, []); // Empty array = runs once on mount
+
+// Every change: Context + pagination → URL
+useEffect(() => {
+  const params = { page: String(page), pageSize: String(pageSize) };
+  if (filters.jobId)           params.jobId     = filters.jobId;
+  if (filters.date)            params.date      = filters.date;
+  if (filters.timeFrame !== 'all') params.timeFrame = filters.timeFrame;
+  if (filters.status    !== 'all') params.status    = filters.status;
+  setSearchParams(params, { replace: true }); // replace: true = no history stack pollution
+}, [filters, page, pageSize, setSearchParams]);
+```
+
+`replace: true` is critical — without it, each filter change pushes a new history entry and Back cycles through every filter the user tried.
+
+#### Styled page heading with live batch count
+
+```typescript
+<Box display="flex" alignItems="center" gap={1.5}>
+  <Box sx={{ bgcolor: 'primary.main', borderRadius: 1, width: 40, height: 40 }}>
+    <HistoryIcon sx={{ color: 'white' }} />
+  </Box>
+  <Typography variant="h3">Batch Execution History</Typography>
+  {!isLoading && (
+    <Chip label={`${total} batches`} sx={{ bgcolor: 'primary.main', color: 'white' }} />
+  )}
+</Box>
+```
+
+The batch count chip shows the **post-filter** count from `useBatches().total`. Filtering to "Failed only" shows "2 batches" not "20 batches".
+
+---
+
+### `src/components/BatchList/FilterPanel.tsx`
+
+Manages **local filter state** — only committed to the global context when "Apply Filters" is clicked.
+
+**Why local state before committing?** Every keystroke in the Job ID field immediately updating the global context would fire an API call per letter. Local state debounces this — user types the full ID, then clicks Apply.
+
+#### Internal state
+
+```typescript
+const [localFilters, ...]       = useState<FilterState>(filters); // Mirrors context
+const [jobIdError, ...]         = useState('');
+const [dateError, ...]          = useState('');
+const [customPickerResetKey, ...] = useState(0);  // Forces CustomTimePicker remount on Clear
+```
+
+#### Four filter handlers
+
+| Handler | Trigger | Updates |
+|---------|---------|---------|
+| `handleJobIdChange` | Autocomplete `onInputChange` | `localFilters.jobId` |
+| `handleDateChange` | TextField `onChange` | `localFilters.date` |
+| `handleTimeFrameChange` | Select `onChange` | `localFilters.timeFrame`; clears custom times if leaving 'custom' |
+| `handleStatusChange` | Select `onChange` | `localFilters.status` |
+
+#### Apply Filters — validation pipeline
+
+```typescript
+const handleSubmit = useCallback(() => {
+  // 1. Validate Job ID format if provided
+  if (jobId && malformed) { setJobIdError('Format: BATCH-YYYYMMDD-HHMM'); return; }
+
+  // 2. Validate custom time range
+  if (timeFrame === 'custom') {
+    if (!customTimeStart || !customTimeEnd) {
+      setDateError('Enter both start and end times...'); return;
+    }
+    if (customTimeStart >= customTimeEnd) {
+      setDateError('Start time must be before end time'); return;
+    }
+  }
+
+  // 3. Commit to global context → triggers re-fetch via useBatches
+  setFilters(localFilters);
+  onSubmit(localFilters); // Tells BatchListPage to reset page → 1
+}, [localFilters, setFilters, onSubmit]);
+```
+
+#### Clear — key increment for CustomTimePicker reset
+
+```typescript
+const handleClear = useCallback(() => {
+  resetFilters();
+  setLocalFilters(EMPTY_FILTERS);
+  setCustomPickerResetKey((k) => k + 1); // ← Triggers CustomTimePicker remount
+  onSubmit(EMPTY_FILTERS);
+}, [resetFilters, onSubmit]);
+```
+
+---
+
+### `src/components/BatchList/CustomTimePicker.tsx`
+
+Expandable panel with Start + End time pickers for `timeFrame === 'custom'`.
+
+#### The critical design — uncontrolled TimeSlot
+
+The original implementation used `useMemo` to derive `hour` and `minute` from the `value` prop. **The bug:**
+
+1. User selects hour "12", minute not yet selected
+2. `buildTimeString("12", "")` returns `""` (minute invalid)
+3. Parent stores `customTimeStart = ""`
+4. `value` prop becomes `""`
+5. `useMemo` re-derives → `hour = ""` — **erasing the user's selection**
+6. Filter never builds → always shows all results
+
+**Fix:** `TimeSlot` uses `useState` initialized **once** from the prop:
+
+```typescript
+const TimeSlot = ({ label, initialValue, onChange, ... }) => {
+  // Initialized ONCE — never re-derived from props after mount
+  const [hour,   setHour]   = useState(() => initialValue.split(':')[0] ?? '');
+  const [minute, setMinute] = useState(() => initialValue.split(':')[1] ?? '');
+
+  const handleHourChange = useCallback((_: React.SyntheticEvent, newVal) => {
+    const h = newVal ?? '';
+    setHour(h);
+    setMinute((prevMinute) => {            // Functional update — reads latest state
+      onChange(buildTimeString(h, prevMinute)); // '' until minute also selected
+      return prevMinute;
+    });
+  }, [onChange]);
+};
+```
+
+The functional update `setMinute((prevMinute) => {...})` reads the latest minute from React state — avoiding the classic **stale closure trap** where `handleHourChange` would capture `minute` from the time of its last creation.
+
+**Reset via key prop:** `customPickerResetKey` increment forces React to unmount + remount `TimeSlot`:
+
+```typescript
+<TimeSlot key={`start-${resetKey}`} ... />
+<TimeSlot key={`end-${resetKey}`}   ... />
+```
+
+#### `buildTimeString` — combining hour + minute
+
+```typescript
+const buildTimeString = (hour: string, minute: string): string => {
+  if (!isValidHour(hour) || !isValidMinute(minute)) return '';
+  return `${String(parseInt(hour, 10)).padStart(2, '0')}:${String(parseInt(minute, 10)).padStart(2, '0')}`;
+};
+```
+
+Returns `''` if either part is incomplete. The parent stores `''` until both parts are filled. The API treats `''` as "no time filter" — correct while the user is mid-entry.
+
+---
+
+### `src/components/BatchList/BatchTable.tsx`
+
+MUI `Table` with header, body (real data or skeletons or empty state), and pagination.
+
+#### Loading skeleton
+
+```typescript
+{isLoading
+  ? Array.from({ length: 5 }).map((_, idx) => (
+      <TableRow key={idx}>
+        {COLUMNS.map((col) => (
+          <TableCell key={col}><Skeleton variant="text" height={24} width="80%" /></TableCell>
+        ))}
+      </TableRow>
+    ))
+  : /* real rows or EmptyState */
+}
+```
+
+5 skeleton rows matching the expected data rows. No layout shift when data arrives.
+
+#### Pagination 0-based → 1-based conversion
+
+```typescript
+const handleChangePage = (_: unknown, newPage: number) => {
+  onPageChange(newPage + 1); // MUI is 0-based; our API is 1-based
+};
+```
+
+MUI `TablePagination` uses 0-based page index. The `+1` converts to the 1-based page numbers that `fetchBatches` uses for `(page - 1) * pageSize` slice calculation.
+
+#### Row count summary
+
+```
+Showing {(page-1)*pageSize+1}–{Math.min(page*pageSize, total)} of {total} batches
+// Example: page=2, pageSize=10, total=20 → "Showing 11–20 of 20 batches"
+```
+
+---
+
+### `src/components/BatchList/BatchRow.tsx`
+
+Single table row wrapped in `React.memo()`:
+
+```typescript
+const BatchRow = memo(({ batch, rowIndex }) => { ... });
+BatchRow.displayName = 'BatchRow';
+```
+
+`React.memo` shallowly compares props. Since React Query returns stable object references for unchanged data, rows that haven't changed don't re-render when the page changes.
+
+#### Keyboard + click navigation
+
+```typescript
+const handleNavigate = () => navigate(`/batch/${encodeURIComponent(batch.batch_id)}`);
+
+const handleKeyDown = (e) => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleNavigate(); }
+};
+
+// On the TableRow:
+tabIndex={0}                     // Makes row focusable via Tab
+role="row"                       // Semantically correct ARIA role
+aria-label={`Batch ${batch.batch_id}, ${batch.success ? 'Success' : 'Failed'}`}
+```
+
+`encodeURIComponent` future-proofs against special characters in batch IDs. `tabIndex={0}` + `onKeyDown` makes every row accessible without a mouse.
+
+---
+
+## 8. Screen 2 — Batch Details
+
+### Data flow
+
+```
+URL: /batch/BATCH-20260401-0800
+    ↓ useParams() extracts batchId
+    ↓ decodeURIComponent()
+useBatchDetails("BATCH-20260401-0800")
+    ↓ queryKey = ['batch', 'BATCH-20260401-0800']
+fetchBatchById("BATCH-20260401-0800")
+    ↓ O(1) lookup in MOCK_BATCH_MAP
+BatchResult object (or null)
+    ↓ 4 render states: error | notFound | loading | success
+BatchDetailsPage renders:
+    ├── BatchHeader     (id, status chip, timestamps, duration)
+    ├── MetricCards     (total_orders, orders_allocated, suggestions_generated)
+    └── ExecutionTimeline → StepDetail × 6
+```
+
+---
+
+### `src/pages/BatchDetailsPage.tsx`
+
+#### Four explicit render states
+
+```typescript
+{isError   && <Alert>Error message + Retry button</Alert>}
+{notFound  && <EmptyState title="Batch not found" />}
+{isLoading && <Box>{/* Skeleton layout — mimics real content */}</Box>}
+{!isLoading && !isError && batch && (
+  <>
+    <BatchHeader batch={batch} />
+    <MetricCards batch={batch} onViewAll={handleViewAll} />
+    <ExecutionTimeline batch={batch} />
+    {/* Export PDF | Refresh | Email Report buttons */}
+  </>
+)}
+```
+
+No "else" branch — every possible state is explicitly handled.
+
+#### "Coming Soon" actions with Snackbar feedback
+
+```typescript
+const handleExportPdf = useCallback(async () => {
+  if (!batch) return;
+  await exportBatchPdf(batch); // Stub in exportService.ts
+  setSnackbar('PDF export – Coming Soon!');
+}, [batch]);
+
+// Snackbar auto-dismisses after 3 seconds
+<Snackbar open={!!snackbar} autoHideDuration={3000} onClose={() => setSnackbar('')}
+  message={snackbar} aria-live="polite" />
+```
+
+---
+
+### `src/components/BatchDetails/BatchHeader.tsx`
+
+```typescript
+// Large monospace Batch ID — looks like a terminal identifier
+<Typography variant="h1" sx={{ fontFamily: 'monospace', fontSize: '48px', color: 'primary.main' }}>
+  {batch.batch_id}
+</Typography>
+
+// Status chip uses MUI semantic color system
+<Chip
+  icon={batch.success ? <CheckCircleIcon /> : <CancelIcon />}
+  label={batch.success ? 'SUCCESS' : 'FAILED'}
+  color={batch.success ? 'success' : 'error'}  // Maps to theme.palette.success/error
+/>
+```
+
+Below: four `MetadataItem` components showing Date, Start Time, End Time, and Duration derived from `formatDisplayDate`, `formatDisplayTime`, and `formatDuration`.
+
+---
+
+### `src/components/BatchDetails/MetricCards.tsx`
+
+Three responsive cards (stack on mobile via `size={{ xs: 12, md: 4 }}`):
+
+| Card | Accent Color | Value | Subtitle |
+|------|-------------|-------|---------|
+| Total Orders | `#E87722` (orange) | `formatNumber(total_orders)` | "Orders processed in this batch" |
+| Allocated Orders | `#2C5F2D` (green) | `formatNumber(orders_allocated)` | "95.2% allocation rate" |
+| Suggestions Generated | `#B85810` (deep orange) | `formatNumber(suggestions_generated)` | "CODIS optimization suggestions" |
+
+Each card has a "View All →" text-link button. Current handler shows a "Coming Soon" snackbar.
+
+---
+
+### `src/components/BatchDetails/ExecutionTimeline.tsx`
+
+Container for the 6 pipeline steps. The loop is driven by `STEP_KEYS` from `types/batch.ts`:
+
+```typescript
+{STEP_KEYS.map((key, index) => (
+  <Box key={key} role="listitem">
+    <StepDetail
+      step={batch[key]}                   // type-safe: key ∈ keyof BatchResult
+      stepNumber={STEP_NUMBERS[index]}    // '①' | '②' | ... | '⑥'
+      stepIndex={index}
+      totalDuration={batch.total_duration_seconds}
+    />
+  </Box>
+))}
+```
+
+`batch[key]` is fully type-checked — a wrong key is a compile error, not a runtime `undefined`.
+
+---
+
+### `src/components/BatchDetails/StepDetail.tsx`
+
+The most interactive component — each row has a progress bar, status icon, and expandable detail panel.
+
+#### Progress bar color logic
+
+```typescript
+const percentage = Math.round((step.duration_seconds / totalDuration) * 100);
+
+const barColor = progressBarColor(percentage);
+// ≥ 35% → '#C62828' (red)    — this step dominates the batch time
+// ≥ 20% → '#F57C00' (orange) — significant portion
+// else  → '#2E7D32' (green)  — healthy, small footprint
+```
+
+#### MUI LinearProgress with custom bar color
+
+```typescript
+<LinearProgress
+  variant="determinate"      // requires value prop (0–100)
+  value={percentage}
+  sx={{
+    height: 10, borderRadius: 5, bgcolor: '#E0E0E0',
+    '& .MuiLinearProgress-bar': { bgcolor: barColor, borderRadius: 5 },
+    //  ↑ MUI child selector pattern — targets the inner animated bar element
+  }}
+/>
+```
+
+#### Expandable detail with `Collapse`
+
+```typescript
+const [expanded, setExpanded] = useState(false);
+
+<Collapse in={expanded} timeout="auto" unmountOnExit>
+  {/* Started At | Completed At | Records Processed | Error Message */}
+</Collapse>
+
+// Toggle button:
+<IconButton onClick={() => setExpanded((prev) => !prev)} aria-expanded={expanded}>
+```
+
+`unmountOnExit` removes DOM nodes when collapsed — reduces DOM size when all 6 steps are collapsed. `timeout="auto"` lets MUI calculate animation duration from content height. The functional updater `(prev) => !prev` avoids closure staleness.
+
+---
+
+## 9. Architectural & Design Decisions
+
+### Decision 1 — React Query instead of useState + useEffect
+
+**What:** All data fetching uses TanStack React Query.
+
+**Why:** The manual pattern requires 20+ lines of boilerplate per fetch — loading state, error state, refetch trigger, cleanup. React Query collapses this to 5 lines and adds:
+- Automatic caching (same key = shared fetch)
+- Background refetching
+- Retry logic (configurable)
+- Request deduplication
+- Stale-while-revalidate
+
+None of these come with the manual `useEffect` pattern.
+
+---
+
+### Decision 2 — Filter state in React Context
+
+**What:** `FilterState` lives in `FilterContext`, not the Page component or URL-only.
+
+**Why:** `FilterPanel` (writer) and `BatchListPage` (reader) are siblings — not parent/child. Without context, state must live in their common ancestor and be prop-drilled through every intermediate layer. Context eliminates prop drilling. The URL is a side-effect for shareability.
+
+---
+
+### Decision 3 — Uncontrolled TimeSlot with key-based reset
+
+**What:** `TimeSlot` manages own `useState` for hour/minute. Parent resets by changing `key`.
+
+**Why:** Fully controlled components (where `value` prop drives display) caused a critical bug — partial entry got cleared by the round-trip through parent state. Uncontrolled with key-reset is the React-idiomatic solution for form fields that need persistent partial state during editing.
+
+---
+
+### Decision 4 — API layer as swap-point (Repository pattern)
+
+**What:** All data access through `batchApi.ts`. Components never import `mockData.ts`.
+
+**Why:** When the real OPRO API is available, only `batchApi.ts` changes. Every hook, component, and page remains untouched. This is the **Repository pattern** applied to frontend code.
+
+---
+
+### Decision 5 — TypeScript strict mode + centralised types
+
+**What:** All interfaces in `src/types/batch.ts`. `"strict": true` in tsconfig.
+
+**Why:** Strict mode catches null dereferences, implicit `any`, and missing returns at **compile time**, not runtime in production. Centralising types means one canonical `BatchResult` definition — rename a field and TypeScript reports every broken usage.
+
+---
+
+### Decision 6 — `React.memo` on `BatchRow`
+
+**What:** `BatchRow` wrapped in `memo()`.
+
+**Why:** The table can show 25 rows. A page change (state update in `BatchListPage`) would normally re-render all 25. With `memo`, only rows whose `batch` prop reference changed re-render. React Query returns stable references for unchanged data, so typically only new-page rows render.
+
+---
+
+### Decision 7 — Seeded random for mock data
+
+**What:** LCG seeded with `20260401` in `mockData.ts`.
+
+**Why:** `Math.random()` would produce different 20 batches on every page refresh — filter results would be unpredictable, making development and debugging unreliable. The seed guarantees identical batches every time.
+
+---
+
+### Decision 8 — Lazy page loading
+
+**What:** `React.lazy()` for both page components.
+
+**Why:** Without lazy loading, Vite bundles everything into one JS file. With it, `BatchDetailsPage` is only downloaded when a user clicks a row. For users who only use the list view, the detail page JS is **never downloaded**.
+
+---
+
+### Decision 9 — MUI global component overrides in theme
+
+**What:** Table header styles defined in `ashleyTheme.ts` `components.MuiTableHead.styleOverrides`.
+
+**Why:** One change in the theme updates every table in the app. Inline `sx` props on individual tables would require hunting down every instance when the brand changes.
+
+---
+
+### Decision 10 — Class component for ErrorBoundary
+
+**What:** `ErrorBoundary` is a class component.
+
+**Why:** React's error boundary lifecycle methods (`getDerivedStateFromError`, `componentDidCatch`) only work in class components. This is a React architectural constraint — functional components simply cannot implement error boundaries. It's the only class component in the entire codebase.
+
+---
+
+### Decision 11 — URL persistence with `replace: true`
+
+**What:** `setSearchParams(params, { replace: true })`.
+
+**Why:** Without `replace: true`, every filter change pushes a history entry. The Back button cycles through every intermediate filter state. `replace: true` keeps the history stack clean.
+
+---
+
+### Decision 12 — 1-based API, 0-based MUI pagination bridge
+
+**What:** `fetchBatches` uses 1-based pages; MUI `TablePagination` uses 0-based. Conversion in `BatchTable.tsx`.
+
+**Why:** REST APIs conventionally use `page=1` for the first page (human language). MUI follows zero-indexed JavaScript convention. The `+1 / -1` conversion is isolated to one function — both the API contract and the UI component stay idiomatic.
+
+---
+
+## 10. Package Reference
+
+### Production dependencies
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `react` | 18.3+ | Core UI library. Concurrent features, automatic batching. Used everywhere. |
+| `react-dom` | 18.3+ | DOM renderer. `createRoot` API in `main.tsx`. |
+| `@mui/material` | 7.3+ | Every UI element: AppBar, Table, Chip, LinearProgress, Autocomplete, Select, Collapse, Skeleton, Snackbar, etc. |
+| `@mui/icons-material` | 7.3+ | 2000+ SVG icon components. HistoryIcon, CheckCircleIcon, CancelIcon, ArrowForwardIcon, AccessTimeIcon, etc. |
+| `@emotion/react` | 11.x | CSS-in-JS runtime required by MUI. Parses the `sx` prop at runtime. |
+| `@emotion/styled` | 11.x | Styled component API. Required by MUI's internal styling. |
+| `react-router-dom` | 7.x | Client-side routing. `BrowserRouter`, `Routes`, `Route`, `useNavigate`, `useParams`, `useSearchParams`. |
+| `@tanstack/react-query` | 5.x | Server state. `QueryClient`, `useQuery`. Caching, loading states, retry, background refetch. |
+| `axios` | 1.x | HTTP client. Wired in `batchApi.ts`, dormant (mock data used). Ready for real API via `axios.create`. |
+| `date-fns` | 3.x | Date utilities. Tree-shakeable — only imported functions are bundled. Immutable, full TypeScript types. |
+
+### Development dependencies
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `vite` | 5.x | Build tool. HMR dev server, ES module native, Rollup production builds. |
+| `@vitejs/plugin-react` | 4.x | React Fast Refresh + JSX transform for Vite. |
+| `typescript` | 5.x | Compiler. Strict mode configured in `tsconfig.app.json`. |
+| `@types/node` | 22.x | Node.js types. Required for `path`, `url` in `vite.config.ts`. |
+| `eslint` | 9.x | Static analysis. Catches JS/TS errors and enforces code style. |
+| `typescript-eslint` | 8.x | TypeScript-aware ESLint rules. Type-checked linting. |
+
+### Why these packages over alternatives
+
+| Decision | Chosen | Alternative | Reason |
+|----------|--------|-------------|--------|
+| State management | React Query | Redux, Zustand | Purpose-built for server state. Redux needs sagas/thunks for async — heavy boilerplate for a read-mostly dashboard. |
+| Component library | MUI v7 | Ant Design, Chakra UI | Most comprehensive data-display components + mature theming — critical for brand color enforcement. |
+| Build tool | Vite | Create React App, Webpack | Native ES modules — dev startup under 300ms vs CRA's ~10s. Smaller bundles, less config. |
+| Date library | date-fns | Moment.js, Day.js | Tree-shakeable (only used functions bundled). Moment.js adds ~67KB even if only `format` is used. |
+| CSS approach | MUI sx + theme | CSS Modules, Tailwind | `sx` prop colocates styles with components, has full theme token access. Global overrides enforce brand consistency. |
+
+---
+
+*End of Technical Documentation*
+*OPRO Cronjob Monitor v1.0 | Ashley Furniture Industries*
+</textarea>
+
+<script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>
+(function () {
+  /* ── Configure marked with syntax highlighting ── */
+  marked.setOptions({
+    gfm: true,
+    breaks: false,
+  });
+
+  const renderer = new marked.Renderer();
+
+  // Add IDs to headings for TOC linking
+  renderer.heading = function (text, level) {
+    const id = text.toLowerCase()
+      .replace(/[`*]/g, '')
+      .replace(/[^\w\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-');
+    return `<h${level} id="${id}">${text}</h${level}>`;
+  };
+
+  marked.use({ renderer });
+
+  /* ── Render markdown ── */
+  const mdSource = document.getElementById('md-src').value;
+  document.getElementById('content').innerHTML = marked.parse(mdSource);
+
+  /* ── Syntax highlight all code blocks ── */
+  document.querySelectorAll('pre code').forEach((block) => {
+    hljs.highlightElement(block);
+  });
+
+  /* ── Build sidebar TOC ── */
+  const headings = document.querySelectorAll('#content h1, #content h2, #content h3, #content h4');
+  const tocContainer = document.getElementById('toc-links');
+
+  headings.forEach((heading) => {
+    const level = heading.tagName.toLowerCase();
+    const text  = heading.textContent;
+    const id    = heading.id;
+    if (!id) return;
+
+    const link = document.createElement('a');
+    link.href      = '#' + id;
+    link.className = 'toc-item ' + level;
+    link.textContent = text;
+    link.addEventListener('click', function (e) {
+      e.preventDefault();
+      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    tocContainer.appendChild(link);
+
+    // Section separator after h1
+    if (level === 'h1') {
+      const sep = document.createElement('div');
+      sep.className = 'toc-section-sep';
+      tocContainer.appendChild(sep);
+    }
+  });
+
+  /* ── Active TOC item on scroll ── */
+  const tocLinks  = document.querySelectorAll('.toc-item');
+  const allHeadings = Array.from(headings);
+  const progressBar = document.getElementById('progress-bar');
+  const backTop     = document.getElementById('back-top');
+  const mainEl      = document.getElementById('main');
+
+  function onScroll() {
+    const scrollTop    = window.scrollY;
+    const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+    const progress     = scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0;
+    progressBar.style.width = progress + '%';
+
+    // Back to top button
+    if (scrollTop > 400) backTop.classList.add('visible');
+    else backTop.classList.remove('visible');
+
+    // Active TOC item
+    let current = '';
+    for (const h of allHeadings) {
+      const rect = h.getBoundingClientRect();
+      if (rect.top <= 90) current = h.id;
+    }
+    tocLinks.forEach((link) => {
+      link.classList.toggle('active', link.getAttribute('href') === '#' + current);
+    });
+  }
+
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+
+  /* ── Auto-scroll active TOC item into view in sidebar ── */
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        const id   = entry.target.id;
+        const link = tocContainer.querySelector(`a[href="#${id}"]`);
+        if (link) link.scrollIntoView({ block: 'nearest' });
+      }
+    });
+  }, { rootMargin: '-10% 0px -80% 0px' });
+
+  allHeadings.forEach((h) => observer.observe(h));
+})();
+</script>
+</body>
+</html>
