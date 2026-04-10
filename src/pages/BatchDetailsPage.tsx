@@ -14,10 +14,11 @@ import EmailIcon from '@mui/icons-material/Email';
 import { useBatchDetails } from '../hooks/useBatchDetails';
 import BatchHeader from '../components/BatchDetails/BatchHeader';
 import MetricCards from '../components/BatchDetails/MetricCards';
+import BatchSummaryTable from '../components/BatchDetails/BatchSummaryTable';
 import ExecutionTimeline from '../components/BatchDetails/ExecutionTimeline';
 import Layout from '../components/layout/Layout';
 import EmptyState from '../components/shared/EmptyState';
-import { exportBatchPdf, emailBatchReport } from '../services/exportService';
+import { exportBatchPdf, emailBatchReport, downloadBatchLogCsv } from '../services/exportService';
 
 /**
  * Page 2 – Batch Details View.
@@ -34,6 +35,12 @@ const BatchDetailsPage: React.FC = () => {
   const handleBack = useCallback(() => {
     navigate(-1);
   }, [navigate]);
+
+  const handleDownloadCsv = useCallback(() => {
+    if (!batch) return;
+    downloadBatchLogCsv(batch);
+    setSnackbar('Batch log downloaded as CSV');
+  }, [batch]);
 
   const handleExportPdf = useCallback(async () => {
     if (!batch) return;
@@ -102,8 +109,9 @@ const BatchDetailsPage: React.FC = () => {
       {/* Batch detail content */}
       {!isLoading && !isError && batch && (
         <>
-          <BatchHeader batch={batch} />
+          <BatchHeader batch={batch} onDownload={handleDownloadCsv} />
           <MetricCards batch={batch} onViewAll={handleViewAll} />
+          <BatchSummaryTable batch={batch} />
           <ExecutionTimeline batch={batch} />
 
           {/* Action buttons */}

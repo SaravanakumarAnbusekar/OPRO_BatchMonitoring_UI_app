@@ -33,12 +33,15 @@ export const parseDateString = (dateStr: string): Date | null => {
 
 /**
  * Converts seconds to a human-readable duration string.
- * e.g. 125 → "2m 05s"
+ * e.g. 125 → "2m 05s", 0.128 → "0.128s", 1.363 → "1.363s"
  */
 export const formatDuration = (seconds: number): string => {
-  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 60) {
+    // Show fractional seconds when < 60s
+    return seconds % 1 === 0 ? `${seconds}s` : `${seconds.toFixed(3)}s`;
+  }
   const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
+  const s = Math.round(seconds % 60);
   return `${m}m ${String(s).padStart(2, '0')}s`;
 };
 
@@ -93,10 +96,10 @@ export const isValidTimeString = (time: string): boolean =>
   /^([01]\d|2[0-3]):([0-5]\d)$/.test(time);
 
 /**
- * Validates that a batch ID matches "BATCH-YYYYMMDD-HHMM".
+ * Validates that a batch ID matches "OPRO-YYYYMMDD-HHMMSS-<hex>".
  */
 export const isValidBatchIdFormat = (id: string): boolean =>
-  /^BATCH-\d{8}-\d{4}$/.test(id);
+  /^OPRO-\d{8}-\d{6}-[0-9a-f]+$/.test(id);
 
 /**
  * Returns a YYYY-MM-DD string for today's local date.

@@ -1,131 +1,136 @@
-import { BatchResult, BatchStepResult } from '../types/batch';
+import { BatchResult, BatchStepResult, BatchJobStatus, STEP_KEYS } from '../types/batch';
 
-/** Seeded deterministic random to ensure consistent mock data */
+/**
+ * Base batch data from batch_run_mock.json – the canonical shape
+ * produced by the ashley-oms-opro backend.
+ */
+const BASE_BATCH: BatchResult = {
+  batch_id: 'OPRO-20260410-091041-055f467a',
+  started_at: '2026-04-10T09:10:41.001981Z',
+  completed_at: '2026-04-10T09:10:42.364609Z',
+  success: true,
+  status: 'COMPLETED',
+  total_orders: 10,
+  orders_allocated: 7,
+  orders_credit_held: 0,
+  orders_off_hold_realloc: 0,
+  orders_credit_exceeded: 0,
+  orders_failed_minimums: 2,
+  suggestions_generated: 10,
+  total_duration_seconds: 1.363,
+  epic_clone: { step_name: 'EPIC Clone Create', success: true, records_processed: 1, records_output: 1, duration_seconds: 1.104, error_message: null, details: { clone_id: 'clone-OPRO-20260410-091041-055f467a', epic_mode: 'mock', is_placeholder: true } },
+  edw_fetch: { step_name: 'EDW Fetch', success: true, records_processed: 10, records_output: 10, duration_seconds: 0.1, error_message: null, details: {} },
+  unreserve_demand: { step_name: 'Unreserve Demand (EPIC Clone)', success: true, records_processed: 10, records_output: 10, duration_seconds: 0.001, error_message: null, details: { clone_id: 'clone-OPRO-20260410-091041-055f467a', orders_to_unreserve: 10, is_placeholder: true } },
+  credit_hold_check: { step_name: 'Credit Hold Check (CS180)', success: true, records_processed: 10, records_output: 0, duration_seconds: 0.001, error_message: null, details: { orders_checked: 10, unique_customers: 6, orders_on_hold: 0 } },
+  off_hold_realloc: { step_name: 'Off-Hold Re-allocation (CR010L)', success: true, records_processed: 10, records_output: 0, duration_seconds: 0.0, error_message: null, details: { orders_taken_off_hold: 0, orders_excluded_type2: 0 } },
+  unallocated_credit: { step_name: 'Calculate Unallocated Credit (CS147A/B)', success: true, records_processed: 10, records_output: 0, duration_seconds: 0.0, error_message: null, details: { customers_processed: 6, customers_with_credit: 6, customers_exceeded: 0 } },
+  prioritize_orders: { step_name: 'Prioritize Open Orders (CS146X1)', success: true, records_processed: 0, records_output: 2, duration_seconds: 0.008, error_message: null, details: { prioritized_order_count: 10, orders_failed_minimums: 2 } },
+  pass1_allocation: { step_name: 'Pass 1 Allocation', success: true, records_processed: 0, records_output: 0, duration_seconds: 0.0, error_message: null, details: {} },
+  consolidation: { step_name: 'Consolidation', success: true, records_processed: 8, records_output: 6, duration_seconds: 0.002, error_message: null, details: { total_groups: 6, exempt_solo: 3, groups_meeting_minimum: 2, groups_below_minimum: 1, orders_deferred: 1 } },
+  re_establish_atp: { step_name: 'Re-establish Gross ATP (CS146S4)', success: true, records_processed: 10, records_output: 0, duration_seconds: 0.0, error_message: null, details: { clone_id: 'clone-OPRO-20260410-091041-055f467a', pass1_allocations_released: 0, consolidated_groups: 3, consolidated_order_lines: 5 } },
+  pass2_allocation: { step_name: 'Pass 2 Allocation (CS146S3)', success: true, records_processed: 7, records_output: 7, duration_seconds: 0.0, error_message: null, details: { allocated: 7, partial: 0, failed: 0, tie_groups: 5 } },
+  edd_comparison: { step_name: 'EDD Comparison', success: true, records_processed: 10, records_output: 7, duration_seconds: 0.0, error_message: null, details: { improved: 2, unchanged: 1, delayed: 4, avg_change_days: 1.57 } },
+  codis_suggestions: { step_name: 'CODIS Suggestions', success: true, records_processed: 10, records_output: 10, duration_seconds: 0.128, error_message: null, details: { total_suggestions: 10, published_to_kafka: 0, publish_failed: 10, allocate_count: 7, unallocate_count: 3 } },
+};
+
+/** Seeded deterministic random */
 const seededRand = (seed: number): (() => number) => {
   let s = seed;
-  return () => {
-    s = (s * 9301 + 49297) % 233280;
-    return s / 233280;
-  };
+  return () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
+};
+const rand = seededRand(20260410);
+const randInt = (min: number, max: number): number => Math.floor(rand() * (max - min + 1)) + min;
+const randFloat = (min: number, max: number): number => +(rand() * (max - min) + min).toFixed(3);
+
+/** Generate a hex string of given length */
+const randHex = (len: number): string => {
+  let h = '';
+  for (let i = 0; i < len; i++) h += Math.floor(rand() * 16).toString(16);
+  return h;
 };
 
-const rand = seededRand(20260401);
+/** Deep-clone and vary a step */
+const varyStep = (base: BatchStepResult, factor: number, fail: boolean): BatchStepResult => ({
+  ...base,
+  success: !fail,
+  records_processed: Math.max(0, base.records_processed + randInt(-2, 5)),
+  records_output: Math.max(0, base.records_output + randInt(-1, 3)),
+  duration_seconds: +(base.duration_seconds * factor).toFixed(3),
+  error_message: fail ? 'Timeout: step exceeded maximum execution threshold. Contact OPRO support.' : null,
+  details: { ...base.details },
+});
 
-const randInt = (min: number, max: number): number =>
-  Math.floor(rand() * (max - min + 1)) + min;
-
-const randBetween = (min: number, max: number): number =>
-  rand() * (max - min) + min;
-
-/**
- * Builds a single BatchStepResult given start time and duration range.
- */
-const buildStep = (
-  stepName: string,
-  startTime: Date,
-  minDuration: number,
-  maxDuration: number,
-  recordsProcessed: number,
-  forceFailure = false,
-): BatchStepResult => {
-  const duration = randInt(minDuration, maxDuration);
-  const completed = new Date(startTime.getTime() + duration * 1000);
-  const success = !forceFailure;
-  return {
-    step_name: stepName,
-    started_at: startTime,
-    completed_at: completed,
-    duration_seconds: duration,
-    records_processed: recordsProcessed,
-    success,
-    error_message: forceFailure
-      ? 'Timeout: step exceeded maximum execution threshold. Contact OPRO support.'
-      : undefined,
-  };
-};
+/** Status distribution for mock data variety */
+const MOCK_STATUSES: BatchJobStatus[] = [
+  'COMPLETED', 'COMPLETED', 'COMPLETED', 'COMPLETED', 'COMPLETED',
+  'COMPLETED', 'FAILED', 'PARTIAL', 'COMPLETED', 'CANCELLED',
+];
 
 /**
- * Generates a single BatchResult.
- * @param batchStart - The batch start time
- * @param isFailed   - Whether this batch should fail
- */
-const generateBatch = (batchStart: Date, isFailed: boolean): BatchResult => {
-  const totalOrders = randInt(800, 1200);
-  const ordersAllocated = Math.floor(totalOrders * randBetween(0.85, 0.95));
-  const suggestionsGenerated = Math.floor(totalOrders * randBetween(0.40, 0.50));
-
-  // Determine which step fails (if any): step index 0–5
-  const failureStepIndex = isFailed ? randInt(0, 5) : -1;
-
-  // Step start times chain together
-  let currentTime = new Date(batchStart);
-
-  const edwFetch = buildStep('EDW Fetch', currentTime, 30, 60, totalOrders, failureStepIndex === 0);
-  currentTime = new Date(currentTime.getTime() + edwFetch.duration_seconds * 1000);
-
-  const pass1 = buildStep('Pass 1 Allocation', currentTime, 90, 150, totalOrders, failureStepIndex === 1);
-  currentTime = new Date(currentTime.getTime() + pass1.duration_seconds * 1000);
-
-  const consolidation = buildStep('Consolidation', currentTime, 20, 40, ordersAllocated, failureStepIndex === 2);
-  currentTime = new Date(currentTime.getTime() + consolidation.duration_seconds * 1000);
-
-  const pass2 = buildStep('Pass 2 Allocation', currentTime, 70, 120, ordersAllocated, failureStepIndex === 3);
-  currentTime = new Date(currentTime.getTime() + pass2.duration_seconds * 1000);
-
-  const eddComparison = buildStep('EDD Comparison', currentTime, 60, 100, ordersAllocated, failureStepIndex === 4);
-  currentTime = new Date(currentTime.getTime() + eddComparison.duration_seconds * 1000);
-
-  const codis = buildStep('CODIS Suggestions', currentTime, 120, 180, suggestionsGenerated, failureStepIndex === 5);
-  currentTime = new Date(currentTime.getTime() + codis.duration_seconds * 1000);
-
-  const total =
-    edwFetch.duration_seconds +
-    pass1.duration_seconds +
-    consolidation.duration_seconds +
-    pass2.duration_seconds +
-    eddComparison.duration_seconds +
-    codis.duration_seconds;
-
-  // Format batch ID as BATCH-YYYYMMDD-HHMM
-  const pad = (n: number) => String(n).padStart(2, '0');
-  const d = batchStart;
-  const batchId = `BATCH-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
-
-  return {
-    batch_id: batchId,
-    started_at: batchStart,
-    completed_at: currentTime,
-    success: !isFailed,
-    total_orders: totalOrders,
-    orders_allocated: ordersAllocated,
-    suggestions_generated: suggestionsGenerated,
-    total_duration_seconds: total,
-    edw_fetch: edwFetch,
-    pass1_allocation: pass1,
-    consolidation,
-    pass2_allocation: pass2,
-    edd_comparison: eddComparison,
-    codis_suggestions: codis,
-  };
-};
-
-/**
- * Generates 20 mock batch results spanning April 1–2, 2026 (every 2 hours).
- * 90% success rate, 10% failure rate.
+ * Generates 10 mock batch results based on batch_run_mock.json schema.
  */
 const generateMockBatches = (): BatchResult[] => {
   const batches: BatchResult[] = [];
-  // April 1 00:00 → April 2 14:00 = 20 slots every 2 hours
-  const baseDate = new Date(2026, 3, 1, 0, 0, 0); // Month is 0-indexed
 
-  for (let i = 0; i < 20; i++) {
-    const batchStart = new Date(baseDate.getTime() + i * 2 * 60 * 60 * 1000);
-    const isFailed = rand() < 0.1; // 10% failure rate
-    batches.push(generateBatch(batchStart, isFailed));
+  for (let i = 0; i < 10; i++) {
+    const hourOffset = i * 2;
+    const baseHour = 6 + hourOffset; // 06:00 → 24:00 spread
+    const day = baseHour >= 24 ? 11 : 10; // April 10-11, 2026
+    const hour = baseHour % 24;
+    const min = randInt(0, 59);
+    const sec = randInt(0, 59);
+    const pad2 = (n: number) => String(n).padStart(2, '0');
+
+    const status = MOCK_STATUSES[i];
+    const isFailed = status === 'FAILED';
+    const isPartial = status === 'PARTIAL';
+    const isCancelled = status === 'CANCELLED';
+    const success = status === 'COMPLETED';
+
+    const batchId = `OPRO-202604${pad2(day)}-${pad2(hour)}${pad2(min)}${pad2(sec)}-${randHex(8)}`;
+    const startedAt = `2026-04-${pad2(day)}T${pad2(hour)}:${pad2(min)}:${pad2(sec)}.${String(randInt(0, 999)).padStart(3, '0')}Z`;
+    const durationFactor = randFloat(0.5, 3.0);
+    const totalDuration = +(BASE_BATCH.total_duration_seconds * durationFactor).toFixed(3);
+    const completedMs = new Date(startedAt).getTime() + totalDuration * 1000;
+    const completedAt = new Date(completedMs).toISOString();
+
+    const totalOrders = randInt(5, 25);
+    const ordersAllocated = isFailed ? 0 : isCancelled ? 0 : Math.max(0, totalOrders - randInt(0, 5));
+    const ordersCreditHeld = randInt(0, 2);
+    const ordersFailedMinimums = randInt(0, 3);
+    const suggestionsGenerated = isFailed ? 0 : totalOrders;
+    const failStepIdx = isFailed ? randInt(0, 12) : isPartial ? randInt(8, 12) : -1;
+
+    const steps: Record<string, BatchStepResult> = {};
+    STEP_KEYS.forEach((key, idx) => {
+      const baseStep = BASE_BATCH[key];
+      steps[key] = varyStep(baseStep, durationFactor, idx === failStepIdx);
+    });
+
+    batches.push({
+      batch_id: batchId,
+      started_at: startedAt,
+      completed_at: completedAt,
+      success,
+      status,
+      total_orders: totalOrders,
+      orders_allocated: ordersAllocated,
+      orders_credit_held: ordersCreditHeld,
+      orders_off_hold_realloc: randInt(0, 1),
+      orders_credit_exceeded: randInt(0, 1),
+      orders_failed_minimums: ordersFailedMinimums,
+      suggestions_generated: suggestionsGenerated,
+      total_duration_seconds: totalDuration,
+      ...(steps as Pick<BatchResult,
+        'epic_clone' | 'edw_fetch' | 'unreserve_demand' | 'credit_hold_check' |
+        'off_hold_realloc' | 'unallocated_credit' | 'prioritize_orders' |
+        'pass1_allocation' | 'consolidation' | 're_establish_atp' |
+        'pass2_allocation' | 'edd_comparison' | 'codis_suggestions'>),
+    });
   }
 
   // Sort descending by start time (newest first)
-  return batches.sort((a, b) => b.started_at.getTime() - a.started_at.getTime());
+  return batches.sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime());
 };
 
 /** Pre-generated mock batch dataset */
@@ -140,51 +145,19 @@ export const MOCK_BATCH_MAP: Record<string, BatchResult> = Object.fromEntries(
 export const BATCH_ID_SUGGESTIONS: string[] = MOCK_BATCHES.map((b) => b.batch_id);
 
 // ─── DEV CONSOLE INSPECTION ──────────────────────────────────────────────────
-// Remove these lines before connecting a real backend.
 if (import.meta.env.DEV) {
   console.group('%c MOCK DATA — OPRO Cronjob Monitor', 'color:#E87722;font-weight:bold;font-size:13px');
-
-  console.log('%c MOCK_BATCHES (full array — 20 batches, newest first)', 'color:#78909C;font-weight:600');
+  console.log('%c MOCK_BATCHES (10 batches, newest first)', 'color:#78909C;font-weight:600');
   console.table(
     MOCK_BATCHES.map((b) => ({
-      batch_id:             b.batch_id,
-      started_at:           b.started_at.toLocaleString(),
-      completed_at:         b.completed_at.toLocaleString(),
-      success:              b.success,
-      total_orders:         b.total_orders,
-      orders_allocated:     b.orders_allocated,
-      suggestions:          b.suggestions_generated,
-      duration_secs:        b.total_duration_seconds,
+      batch_id: b.batch_id,
+      started_at: b.started_at,
+      status: b.status,
+      total_orders: b.total_orders,
+      orders_allocated: b.orders_allocated,
+      suggestions: b.suggestions_generated,
+      duration_secs: b.total_duration_seconds,
     })),
   );
-
-  console.log('%c MOCK_BATCH_MAP (object — key = batch_id)', 'color:#78909C;font-weight:600');
-  console.log(MOCK_BATCH_MAP);
-
-  console.log('%c BATCH_ID_SUGGESTIONS (autocomplete list)', 'color:#78909C;font-weight:600');
-  console.log(BATCH_ID_SUGGESTIONS);
-
-  console.log('%c Click any batch below to expand all 6 step details:', 'color:#78909C;font-weight:600');
-  MOCK_BATCHES.forEach((b) => {
-    console.groupCollapsed(`%c ${b.batch_id}  [${b.success ? '✓ SUCCESS' : '✕ FAILED'}]`, `color:${b.success ? '#2E7D32' : '#C62828'};font-weight:600`);
-    console.table([
-      b.edw_fetch,
-      b.pass1_allocation,
-      b.consolidation,
-      b.pass2_allocation,
-      b.edd_comparison,
-      b.codis_suggestions,
-    ].map((s) => ({
-      step:             s.step_name,
-      started_at:       s.started_at.toLocaleTimeString(),
-      completed_at:     s.completed_at.toLocaleTimeString(),
-      duration_secs:    s.duration_seconds,
-      records:          s.records_processed,
-      success:          s.success,
-      error:            s.error_message ?? '—',
-    })));
-    console.groupEnd();
-  });
-
   console.groupEnd();
 }

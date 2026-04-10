@@ -12,7 +12,7 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import { BatchStepResult } from '../../types/batch';
-import { formatDuration, formatDisplayTime } from '../../utils/dateUtils';
+import { formatDuration } from '../../utils/dateUtils';
 import { stepPercentage, progressBarColor, formatNumber } from '../../utils/formatters';
 
 interface StepDetailProps {
@@ -134,9 +134,9 @@ const StepDetail: React.FC<StepDetailProps> = ({
           data-testid={`step-detail-expanded-${stepIndex}`}
         >
           <Box display="flex" flexWrap="wrap" gap={3}>
-            <DetailItem label="Started At" value={formatDisplayTime(step.started_at)} />
-            <DetailItem label="Completed At" value={formatDisplayTime(step.completed_at)} />
+            <DetailItem label="Duration" value={formatDuration(step.duration_seconds)} />
             <DetailItem label="Records Processed" value={formatNumber(step.records_processed)} />
+            <DetailItem label="Records Output" value={formatNumber(step.records_output)} />
             {step.error_message && (
               <Box width="100%">
                 <Typography variant="caption" color="text.secondary" textTransform="uppercase">
@@ -145,6 +145,20 @@ const StepDetail: React.FC<StepDetailProps> = ({
                 <Typography variant="body2" color="error.main" fontWeight={500}>
                   {step.error_message}
                 </Typography>
+              </Box>
+            )}
+            {step.details && Object.keys(step.details).length > 0 && (
+              <Box width="100%">
+                <Typography variant="caption" color="text.secondary" textTransform="uppercase" display="block" mb={0.5}>
+                  Details
+                </Typography>
+                <Box component="ul" sx={{ m: 0, pl: 2 }}>
+                  {Object.entries(step.details).map(([key, val]) => (
+                    <Typography key={key} component="li" variant="body2" color="text.secondary" sx={{ fontSize: '12px' }}>
+                      <strong>{key.replace(/_/g, ' ')}:</strong> {String(val)}
+                    </Typography>
+                  ))}
+                </Box>
               </Box>
             )}
           </Box>

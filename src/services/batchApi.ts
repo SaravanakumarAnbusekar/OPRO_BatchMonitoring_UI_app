@@ -52,7 +52,7 @@ export const fetchBatches = async (
     const filterDate = parseDateString(filters.date);
     if (filterDate) {
       results = results.filter((b) => {
-        const bDate = b.started_at;
+        const bDate = new Date(b.started_at);
         return (
           bDate.getFullYear() === filterDate.getFullYear() &&
           bDate.getMonth() === filterDate.getMonth() &&
@@ -65,18 +65,16 @@ export const fetchBatches = async (
   // Filter by time frame
   if (filters.timeFrame !== 'all') {
     results = results.filter((b) =>
-      isWithinTimeFrame(b.started_at, filters.timeFrame, {
+      isWithinTimeFrame(new Date(b.started_at), filters.timeFrame, {
         start: filters.customTimeStart,
         end: filters.customTimeEnd,
       }),
     );
   }
 
-  // Filter by status
-  if (filters.status === 'success') {
-    results = results.filter((b) => b.success === true);
-  } else if (filters.status === 'failed') {
-    results = results.filter((b) => b.success === false);
+  // Filter by status (matches BatchJobStatus from ashley-oms-opro)
+  if (filters.status !== 'all') {
+    results = results.filter((b) => b.status === filters.status);
   }
 
   const total = results.length;

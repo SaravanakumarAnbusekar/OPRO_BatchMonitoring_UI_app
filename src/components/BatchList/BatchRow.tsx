@@ -68,9 +68,9 @@ const BatchRow: React.FC<BatchRowProps> = memo(({ batch, rowIndex }) => {
 
       {/* Date + Time */}
       <TableCell>
-        <Typography variant="body2">{formatDisplayDate(batch.started_at)}</Typography>
+        <Typography variant="body2">{formatDisplayDate(new Date(batch.started_at))}</Typography>
         <Typography variant="caption" color="text.secondary">
-          {formatDisplayTime(batch.started_at)}
+          {formatDisplayTime(new Date(batch.started_at))}
         </Typography>
       </TableCell>
 
@@ -93,7 +93,7 @@ const BatchRow: React.FC<BatchRowProps> = memo(({ batch, rowIndex }) => {
             fontWeight={500}
             color={batch.success ? 'success.main' : 'error.main'}
           >
-            {batch.success ? 'Success' : 'Failed'}
+            {batch.status}
           </Typography>
         </Box>
       </TableCell>

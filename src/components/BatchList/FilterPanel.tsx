@@ -28,11 +28,16 @@ interface FilterPanelProps {
  * Filter panel with Job ID autocomplete, date picker, and time frame dropdown.
  * Filters persist in the context and URL query params.
  */
-/** Status filter options */
+/** Status filter options – aligned with BatchJobStatus from ashley-oms-opro */
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All Statuses' },
-  { value: 'success', label: '✓ Success' },
-  { value: 'failed', label: '✕ Failed' },
+  { value: 'PENDING', label: '⏳ Pending' },
+  { value: 'QUEUED', label: '📋 Queued' },
+  { value: 'RUNNING', label: '▶ Running' },
+  { value: 'COMPLETED', label: '✓ Completed' },
+  { value: 'FAILED', label: '✕ Failed' },
+  { value: 'CANCELLED', label: '⊘ Cancelled' },
+  { value: 'PARTIAL', label: '◐ Partial' },
 ] as const;
 
 const FilterPanel: React.FC<FilterPanelProps> = ({ onSubmit }) => {
@@ -95,7 +100,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ onSubmit }) => {
     // Validate job ID format if provided
     if (localFilters.jobId && !BATCH_ID_SUGGESTIONS.some((s) => s.includes(localFilters.jobId))) {
       if (localFilters.jobId.length > 3 && !isValidBatchIdFormat(localFilters.jobId)) {
-        setJobIdError('Format: BATCH-YYYYMMDD-HHMM');
+        setJobIdError('Format: OPRO-YYYYMMDD-HHMMSS-<hex>');
         return;
       }
     }
@@ -150,7 +155,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ onSubmit }) => {
               <TextField
                 {...params}
                 label="Job ID"
-                placeholder="BATCH-YYYYMMDD-HHMM"
+                placeholder="OPRO-YYYYMMDD-HHMMSS"
                 size="small"
                 error={!!jobIdError}
                 helperText={jobIdError}
