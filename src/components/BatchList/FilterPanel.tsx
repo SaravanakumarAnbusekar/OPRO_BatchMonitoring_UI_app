@@ -31,13 +31,13 @@ interface FilterPanelProps {
 /** Status filter options – aligned with BatchJobStatus from ashley-oms-opro */
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All Statuses' },
-  { value: 'PENDING', label: '⏳ Pending' },
-  { value: 'QUEUED', label: '📋 Queued' },
-  { value: 'RUNNING', label: '▶ Running' },
-  { value: 'COMPLETED', label: '✓ Completed' },
-  { value: 'FAILED', label: '✕ Failed' },
-  { value: 'CANCELLED', label: '⊘ Cancelled' },
-  { value: 'PARTIAL', label: '◐ Partial' },
+  { value: 'PENDING', label: 'Pending' },
+  { value: 'QUEUED', label: 'Queued' },
+  { value: 'RUNNING', label: 'Running' },
+  { value: 'COMPLETED', label: 'Completed' },
+  { value: 'FAILED', label: 'Failed' },
+  { value: 'CANCELLED', label: 'Cancelled' },
+  { value: 'PARTIAL', label: 'Partial' },
 ] as const;
 
 const FilterPanel: React.FC<FilterPanelProps> = ({ onSubmit }) => {
